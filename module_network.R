@@ -1,4 +1,3 @@
-
 MRnetworkUI <- function(id) {
   ns <- NS(id)
   
@@ -6,7 +5,10 @@ MRnetworkUI <- function(id) {
     sidebarPanel(
       width = 2,
       actionButton(ns("update_network"), "Update Network"),
+      checkboxInput(ns("red_bait"), "Color Bait Gene?", value = F, width = NULL),
       checkboxInput(ns("find_clusterONEs"), "Find Clusters?", value = F, width = NULL),
+      checkboxInput(ns("quant_vertices"), "Set size of vertices?", value=T, width=NULL),
+      #checkboxInput(ns("size_or_color"), "FC by size or color?", value=T, width=NULL),
       numericInput(ns("min_overlap"), "Minimum overlapping genes in cluster:", 1)
       
       #sliderInput(ns("range"),"Range:",min = 0, max = 100,value = c(2,10))
@@ -37,7 +39,6 @@ MRnetwork <- function(input, output, session, data) {
     #data <- read.table("mr_adjacency_matrix.csv", header=T, sep="\t")
     #adj_matrix <- as.matrix(data[,-1])
     #rownames(adj_matrix) <- data[,1]
-    
     # Use input coexpression table as an adjacency matrix
     adj_matrix <- as.matrix(data())
     # This is the gene that will be colored red
@@ -49,18 +50,25 @@ MRnetwork <- function(input, output, session, data) {
     # Create the igraph network from the adjecency matrix
     igraph_network <- graph_from_adjacency_matrix(adj_matrix, mode="undirected", weighted = T,
                                                   diag = F, add.colnames = NA, add.rownames = NULL)
+    
     # Get the name of all the vertices in the network
     vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
     # Set name of vertices to black
     vertices_colors <- rep("black", length(vertices_names))
-    vertices_colors[match(selected_gene, vertices_names)] <- "red"
     annot <- read.table("annotation/ZmV3.csv", sep="\t", header=T, row.names=1, quote="")
     annot <- as.vector(annot[, "annotation"][match(tolower(rownames(adj_matrix)), tolower(rownames(annot)))])
     igraph_network <- set_vertex_attr(igraph_network,"annotation",value=(annot))
-    #igraph_network <- set_vertex_attr(igraph_network,"value",value=c(1:length(V(igraph_network))))
     igraph_network <- remove.edge.attribute(igraph_network, "weight")
     igraph_network <- set_vertex_attr(igraph_network,"color",value=vertices_colors)
-    if(input$find_clusterONEs){igraph_network<-clusterONEs(igraph_network,selected_gene,input$min_overlap)}
+    #igraph_network<-clusterONEs(igraph_network,input$min_overlap)
+    if(input$find_clusterONEs){igraph_network<-clusterONEs(igraph_network,input$min_overlap)}
+    quant_data <- read.table("zm3_fc.csv",sep=",", header=T)
+    if(input$quant_vertices){igraph_network<-quantVertices(igraph_network, quant_data)}
+    if(input$red_bait){
+      vertices_colors <- get.vertex.attribute(igraph_network,"color")
+      vertices_colors[match(selected_gene, vertices_names)] <- "red"
+      igraph_network <- set_vertex_attr(igraph_network,"color",value=vertices_colors)
+      }
     return(igraph_network)
     })
   
@@ -74,12 +82,6 @@ MRnetwork <- function(input, output, session, data) {
        #visEdges(smooth = FALSE) %>% 
        visEvents(selectNode = "function(properties) {alert(this.body.data.nodes._data[properties.nodes[0]].annotation); }")
   })
-}
-
-colorChanger <- function(full_list, sub_list, color, empty=F){
-  fORt <- full_list %in% unlist(sub_list)
-  color_list <- ifelse(fORt, color, empty)
-  return(color_list)
 }
 
 # exponential decay function
@@ -127,7 +129,24 @@ check_for_pfams <- function(all_pfams, pfam_list, gene_list){
   return(shapes)
 }
 
-clusterONEs <- function(igraph_network,selected_gene,min_overlap){
+quantVertices <- function(igraph_network, data){
+  # Get the name of all the vertices in the network
+  vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
+  # Set default fold-change values to 1 on all vertices
+  fc <- rep(0, length(vertices_names))
+  for(name in vertices_names){
+    if(name %in% data[,"GeneID"]){fc[match(name,vertices_names)] <- data[data[,"GeneID"]==name,][,"ZmPep3"]}}
+  #if(size){attribute <- fc**3+10
+  #  igraph_network <- set_vertex_attr(igraph_network,"value",value=attribute)
+  #} else{#display.brewer.pal(n = 7, name = 'RdBu')
+  br <- rev(brewer.pal(n = 7, name = 'RdBu')) # brewer colors, reversed
+  bn <- .bincode(fc,breaks=c(-Inf,-3,-2,-1,1,2,3,Inf)) # bins of values
+  attribute <- br[bn] # assign color to FC values
+  igraph_network <- set_vertex_attr(igraph_network,"color",value=attribute)
+  return(igraph_network)
+}
+
+clusterONEs <- function(igraph_network,min_overlap){
   # Get the name of all the vertices in the network
   vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
   # Set name of vertices to black
@@ -149,10 +168,23 @@ clusterONEs <- function(igraph_network,selected_gene,min_overlap){
     # If only one cluster was detected, just color it
     vertices_colors <- color_clusters(clusters, vertices_names, vertices_colors)
   }}
-  vertices_colors[match(selected_gene, vertices_names)] <- "red"
-  igraph_network <- set_vertex_attr(igraph_network,"color",value=vertices_colors)
-  proteins_pfams <- read.table("Pfam/Zea_mays.AGPv3.21.pep.longest.parsed.split.tsv", header=T, sep="\t")
-  selected_pfams <- read.table("Pfam/wisecaver_pfams_sm_split.tsv", header=T, sep="\t")
+  if(TRUE & length(clusters)>0){
+    for(cluster in clusters){
+      # get all pair-wise combinations of vertices, unlist to fit next function
+      vertex_pairs <- unlist(combn(cluster,2,simplify=F))
+      # get all existing edges between pairs of vertices (equal zero=no edge)
+      existing_edges <- get.edge.ids(igraph_network, vertex_pairs)
+      # get the actual edges from the graph based on existing edge pairs
+      modify_edges <- E(igraph_network, P=vertex_pairs[rep(existing_edges!=0,each=2)])
+      print(modify_edges)
+      modify_color <- vertices_colors[match(cluster[[1]], vertices_names)]
+      igraph_network <- set_edge_attr(igraph_network,"color",modify_edges,modify_color)
+      igraph_network <- set_edge_attr(igraph_network,"width",modify_edges,5)
+    }
+  } else{igraph_network <- set_vertex_attr(igraph_network,"color",value=vertices_colors)}
+  
+  proteins_pfams <- read.table("domains/Zea_mays.AGPv3.21.pep.longest.parsed.split.tsv", header=T, sep="\t")
+  selected_pfams <- read.table("domains/wisecaver_pfams_sm_split.tsv", header=T, sep="\t")
   shapes <- check_for_pfams(proteins_pfams,selected_pfams,V(igraph_network)$name)
   igraph_network <- set_vertex_attr(igraph_network,"shape",value=shapes)
   return(igraph_network)

@@ -6,11 +6,16 @@ dataInputUI <- function(id) {
     tags$head(tags$style(HTML("hr {border-top: 1px solid #000000;}"))),
     sidebarPanel(width = 12,
       selectInput(ns("expression"), "Choose an expression dataset:", 
-                  choices = c("mini.csv", list.files("data/", pattern='*.csv'))
-      ),
+                  choices = c("mini.csv", list.files("data/", pattern='*.csv'))),
       fileInput(ns("submit_expression"), "Choose CSV File", multiple = FALSE,
-                accept = c("text/csv","text/comma-separated-values,text/plain",".csv")
-      ), hr(),
+                accept = c("text/csv","text/comma-separated-values,text/plain",".csv")), 
+      hr(),
+      # not implemented any server-side functions for this part yet
+      selectInput(ns("proteins"), "Choose protein FASTA file:", 
+                  choices = c("mini.csv", list.files("domains/", pattern='*.csv'))),
+      fileInput(ns("submit_proteins"), "Submit protein FASTA file (.fa)", multiple = FALSE,
+                accept = c("text/fa","text/fasta,text/plain",".fa")), 
+      hr(),
       actionButton(ns('reset_submit'), 'Reset'),
       tags$hr()
     ),
@@ -35,12 +40,11 @@ dataInput <- function(input, output, session) {
   })
   
   expression <- reactive({
-    if(is.null(submitted())){
-      data_loader(read.csv(paste("data/", default(), sep=""), header=T))}
-    else{
-      data_loader(read.csv(submitted()$datapath, header = T))
-    }
+    if(is.null(submitted())){data_loader(read.csv(paste("data/", default(), sep=""), header=T))}
+    else{data_loader(read.csv(submitted()$datapath, header = T))}
   })
+  
+  proteins <- 
   
   metabolites <- reactive({
     NA

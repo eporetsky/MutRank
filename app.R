@@ -15,6 +15,7 @@ if (!require("phytools")) {
   library(shiny)
 }
 
+
 library(shinyjs)
 library(shiny)
 library(shinythemes)
@@ -23,6 +24,7 @@ library(visNetwork)
 library(ggplot2)
 library(RColorBrewer) # for network node colors
 library(reshape2) # used for the heatmap
+library(data.table)
 
 source("data_input.R")
 source("module_mutualrank.R")
