@@ -3,15 +3,14 @@ MRnetworkUI <- function(id) {
   
   tabPanel("Network",
     sidebarPanel(
-      width = 2,
+      width = 4,
       actionButton(ns("update_network"), "Update Network"),
-      checkboxInput(ns("red_bait"), "Color Bait Gene?", value = F, width = NULL),
-      checkboxInput(ns("find_clusterONEs"), "Find Clusters?", value = F, width = NULL),
+      selectInput(ns("threshold"), "MR Threshold:", selected=12, choices = c(5,10,12,24,50,58,100,116,231)),
+      checkboxInput(ns("star_bait"), "Change bait gene to star shape?", value = T, width = NULL),
+      checkboxInput(ns("find_clusterONEs"), "Find Clusters?", value = T, width = NULL),
       checkboxInput(ns("quant_vertices"), "Set size of vertices?", value=T, width=NULL),
       #checkboxInput(ns("size_or_color"), "FC by size or color?", value=T, width=NULL),
       numericInput(ns("min_overlap"), "Minimum overlapping genes in cluster:", 1)
-      
-      #sliderInput(ns("range"),"Range:",min = 0, max = 100,value = c(2,10))
      ),
     mainPanel(
       #tableOutput({ns("df_mr")})
@@ -21,53 +20,38 @@ MRnetworkUI <- function(id) {
   )
 }
 
-MRnetwork <- function(input, output, session, data) {
+MRnetwork <- function(input, output, session, coexpression, annotations, foldchange, association) {
   ns <- session$ns
   
-  output$df_mr <- renderTable({
-    data[1:5,1:5]
-  })
-  
-  slider_values <- reactive({
-    input$range
-  })
+  igraph_network <- reactiveVal()
   
   igraph_network <- reactive({
-    # For the purpose of testing, I'm using a small premade network, remove later
-    # Don't forget to add () to all data() variables, because it's a reactive objecgt
-    # igraph needs to work with as.matrix, fyi
-    #data <- read.table("mr_adjacency_matrix.csv", header=T, sep="\t")
-    #adj_matrix <- as.matrix(data[,-1])
-    #rownames(adj_matrix) <- data[,1]
     # Use input coexpression table as an adjacency matrix
-    adj_matrix <- as.matrix(data())
+    adj_matrix <- as.matrix(coexpression())
     # This is the gene that will be colored red
     selected_gene <- rownames(adj_matrix)[1]
     # transform data using Wisecavers exponential deccay parameters
     adj_matrix <- apply(adj_matrix, 2, mr_exponential_decay )
     # Filter out vertices with higher MR values than specified
-    adj_matrix[adj_matrix <= 0.01] <- 0
+    adj_matrix[adj_matrix < 0.01] <- 0
     # Create the igraph network from the adjecency matrix
     igraph_network <- graph_from_adjacency_matrix(adj_matrix, mode="undirected", weighted = T,
                                                   diag = F, add.colnames = NA, add.rownames = NULL)
-    
     # Get the name of all the vertices in the network
     vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
     # Set name of vertices to black
     vertices_colors <- rep("black", length(vertices_names))
-    annot <- read.table("annotation/ZmV3.csv", sep="\t", header=T, row.names=1, quote="")
-    annot <- as.vector(annot[, "annotation"][match(tolower(rownames(adj_matrix)), tolower(rownames(annot)))])
+    annot <- as.vector(annotations()[, "annotation"][match(tolower(rownames(adj_matrix)), tolower(rownames(annotations())))])
     igraph_network <- set_vertex_attr(igraph_network,"annotation",value=(annot))
     igraph_network <- remove.edge.attribute(igraph_network, "weight")
     igraph_network <- set_vertex_attr(igraph_network,"color",value=vertices_colors)
     #igraph_network<-clusterONEs(igraph_network,input$min_overlap)
     if(input$find_clusterONEs){igraph_network<-clusterONEs(igraph_network,input$min_overlap)}
-    quant_data <- read.table("zm3_fc.csv",sep=",", header=T)
-    if(input$quant_vertices){igraph_network<-quantVertices(igraph_network, quant_data)}
-    if(input$red_bait){
-      vertices_colors <- get.vertex.attribute(igraph_network,"color")
-      vertices_colors[match(selected_gene, vertices_names)] <- "red"
-      igraph_network <- set_vertex_attr(igraph_network,"color",value=vertices_colors)
+    if(input$quant_vertices){igraph_network<-foldchange_vertices(igraph_network, foldchange)}
+    if(input$star_bait){
+      vertices_colors <- get.vertex.attribute(igraph_network,"shape")
+      vertices_colors[match(selected_gene, vertices_names)] <- "star"
+      igraph_network <- set_vertex_attr(igraph_network,"shape",value=vertices_colors)
       }
     return(igraph_network)
     })
@@ -84,7 +68,6 @@ MRnetwork <- function(input, output, session, data) {
   })
 }
 
-# exponential decay function
 mr_exponential_decay <- function(mr){exp(-(mr-1)/5)}
 
 union_overlapping_clusters <- function(clusters,min_overlap){
@@ -105,7 +88,6 @@ union_overlapping_clusters <- function(clusters,min_overlap){
   return(clusters)
 }
 
-
 color_clusters <- function(clusters, vertices_names, vertices_colors){
     # color pellete and color selection assuming non-overlapping clusters
     qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
@@ -124,18 +106,20 @@ check_for_pfams <- function(all_pfams, pfam_list, gene_list){
   shapes <- rep(NA,length(gene_list))
   for(ix in 1:length(gene_list)){
     pfams_of_gene <- all_pfams[which(all_pfams$target_name == gene_list[ix]),]$query_accession 
-    if(TRUE %in% (pfams_of_gene %in% pfam_list$query_accession)){shapes[ix]="star"}
+    if(TRUE %in% (pfams_of_gene %in% pfam_list$query_accession)){shapes[ix]="diamond"}
   }
   return(shapes)
 }
 
-quantVertices <- function(igraph_network, data){
+foldchange_vertices <- function(igraph_network, foldchange, column){
+  foldchange <- foldchange()
+  print(head(foldchange))
   # Get the name of all the vertices in the network
   vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
   # Set default fold-change values to 1 on all vertices
   fc <- rep(0, length(vertices_names))
   for(name in vertices_names){
-    if(name %in% data[,"GeneID"]){fc[match(name,vertices_names)] <- data[data[,"GeneID"]==name,][,"ZmPep3"]}}
+    if(name %in% foldchange[,"GeneID"]){fc[match(name,vertices_names)] <- foldchange[foldchange[,"GeneID"]==name,][,"ZmPep3"]}}
   #if(size){attribute <- fc**3+10
   #  igraph_network <- set_vertex_attr(igraph_network,"value",value=attribute)
   #} else{#display.brewer.pal(n = 7, name = 'RdBu')

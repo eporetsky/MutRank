@@ -3,17 +3,15 @@ mutualRankUI <- function(id){
   
   tabPanel("Mutual Rank",
      sidebarPanel(
-       width = 2,
+       width = 4,
        textInput(ns('gene'), "Gene Name","GRMZM2G075459"),
        numericInput(ns("num"), "Number of Genes to correlate:", 5),
        actionButton(ns("update_button"), "Update"),
-       selectInput(ns("mrVScor"), "MR or Correlation:", choices = c("MR", "Correlation")),
-       checkboxInput(ns("firstColumn"), "Only show first column?", value = F, width = NULL),
+       selectInput(ns("mrVScor"), "MR or Correlation:", choices = c("MR", "PCC")),
+       checkboxInput(ns("firstColumn"), "Only show first column?", value = T, width = NULL),
        checkboxInput(ns("order"), "Order table by MR?", value = T, width = NULL),
        checkboxInput(ns("round"), "Round to nearest integer?", value = T, width = NULL),
-       checkboxInput(ns("annotate"), "Annotate Genes", value = F, width = NULL),
-       selectInput(ns("annotation"), "Choose an annotation:", 
-                   choices = list.files("annotation/", pattern='*.csv')),
+       checkboxInput(ns("annotate"), "Annotate Genes", value = T, width = NULL),
        hr()
      ),
      mainPanel(
@@ -23,11 +21,8 @@ mutualRankUI <- function(id){
     )
 }
 
-?renderTable
-mutualRank <- function(input, output, session, data) {
-  
-  #
-  coexpression_df <- reactive({
+mutualRank <- function(input, output, session, data, annotations) {
+  coexpression <- reactive({
     input$update_button
     gene_list <- isolate(input$gene)
     num <- isolate(input$num)
@@ -36,17 +31,17 @@ mutualRank <- function(input, output, session, data) {
   })
   
   coexpression_df_prefs <- reactive({
-    df_output_editor(coexpression_df(),input$firstColumn,input$mrVScor,input$order,input$round)
+    df_output_editor(coexpression(),input$firstColumn,input$mrVScor,input$order,input$round)
   })
   
   output$coexpression_table <- renderTable({
-    if(input$annotate){output_df <- df_annotator(coexpression_df_prefs(),input$annotation)} 
+    if(input$annotate){output_df <- df_annotator(coexpression_df_prefs(),annotations())} 
     else{output_df <- coexpression_df_prefs()}},
     class = 'cell-border stripe nowrap compact dt-center',
     bordered = TRUE,
     rownames = TRUE
   )
-  return(coexpression_df)
+  return(coexpression)
 }
 
 coexpression_table <- function(datm, genes, n, mrVScor){
@@ -82,14 +77,12 @@ coexpression_table <- function(datm, genes, n, mrVScor){
   rank_for_mr <- rank_for_mr[row.names(genes_for_mr),]
   # Calculate the MR values between selected genes
   mr <- sqrt(rank_for_mr*t(rank_for_mr))
-  write.table(mr, "mr_adjacency_matrix.csv", quote=F, sep="\t", col.names=NA)
   ifelse(mrVScor=="Correlation", return(cor_for_mr[,row.names(genes_for_mr)]), return(mr))
 }
 
-df_annotator <- function(df, annotation){
-  annot <- read.table(paste("annotation/", annotation, sep=""), sep="\t", header=T, row.names=1, quote="")
-  annot <- as.vector(annot[, "annotation"][match(tolower(rownames(df)), tolower(rownames(annot)))])
-  df <- cbind(df,annot)
+df_annotator <- function(df, annotations){
+  annotations <- as.vector(annotations[, "annotation"][match(tolower(rownames(df)), tolower(rownames(annotations)))])
+  df <- cbind(df,annotations)
   return(df)
 }
 
@@ -99,14 +92,4 @@ df_output_editor <- function(df,firstColumn,mrVScor,order,round){
   if(round){df<-round(df, 0)}
   #colnames(df) <- sprintf('<div style="transform:rotate(90deg);margin-top:10px;">%s</div>', colnames(df))
   return(df)
-}
-
-selected_scatter_plot <- function(data, cols){
-  ix1 <- match(tolower(cols[1]), tolower(row.names(data)))
-  ix2 <- match(tolower(cols[2]), tolower(row.names(data)))
-  temp <- data.frame(data[ix1,], data[ix2,])
-  colnames(temp)<-cols
-  ggplot(temp, aes_string(x=cols[1],y=cols[2])) + 
-    geom_point() +
-    geom_text(label=rownames(temp))
 }

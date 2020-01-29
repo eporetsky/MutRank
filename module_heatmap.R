@@ -5,6 +5,7 @@ heatmapUI <- function(id) {
     sidebarPanel(
       width = 2,
       actionButton(ns("update_heatmap"), "Update Heatmap"),
+      p(),
       downloadButton(ns('heatmap_download'),"Download Heatmap"),
      ),
     mainPanel(
@@ -13,12 +14,13 @@ heatmapUI <- function(id) {
   )
 }
 
-heatmap <- function(input, output, session, data) {
+heatmap <- function(input, output, session, coexpression) {
   ns <- session$ns
   
   melted_cormat <- reactive({
     input$update_heatmap
-    adj_matrix <- as.matrix(data())
+    adj_matrix <- as.matrix(coexpression())
+    adj_matrix <- round(adj_matrix)
     diag(adj_matrix) <- rep(-1,length(diag(adj_matrix)))
     get_tri <- get_lower_tri(adj_matrix)
     # Melt the correlation matrix
