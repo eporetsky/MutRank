@@ -10,14 +10,14 @@
 ######################################################
 
 ## Load necessary packages
-if (!require("phytools")) {
-  install.packages("shiny", dependencies = TRUE)
-  library(shiny)
-}
+
+#if (!require("phytools")) {
+#  install.packages("shiny", dependencies = TRUE)
+#  library(shiny)
+#}
 
 library(shinyjs)
 library(shiny)
-library(shinycssloaders)
 library(shinythemes)
 library(igraph)
 library(visNetwork)
@@ -26,7 +26,6 @@ library(RColorBrewer) # for network node colors
 library(reshape2) # used for the heatmap
 library(ontologyIndex)
 library(hypergea)
-library(data.table)
 
 source("data_input.R")
 source("module_mutualrank.R")
@@ -49,10 +48,29 @@ ui <- fluidPage(
 server <- function(input, output, session) {
   session$onSessionEnded(stopApp)
   data <- callModule(dataInput,"dataInputNS")
-  coexpression <- callModule(mutualRank,"mutualRankNS", data$expression,data$annotations)
-  callModule(heatmap,"heatmapNS",coexpression)
-  callModule(MRnetwork,"MRnetworkNS", coexpression, data$annotations, data$foldchange, data$association)
-  callModule(enrichment,"enrichmentNS", coexpression, data$GO_db, data$GO_genes)
+  coexpression <- callModule(mutualRank,"mutualRankNS", 
+                             data$expression,
+                             data$annotations,
+                             data$symbols,
+                             data$categories,
+                             data$GO_genes,
+                             data$domains)
+  callModule(heatmap,"heatmapNS",
+             coexpression, 
+             data$symbols)
+  callModule(MRnetwork,"MRnetworkNS", 
+             coexpression, 
+             data$annotations, 
+             data$symbols, 
+             data$foldchange, 
+             data$association,
+             data$categories,
+             data$GO_genes,
+             data$domains)
+  callModule(enrichment,"enrichmentNS", 
+             coexpression, 
+             data$GO_db, 
+             data$GO_genes)
 }
 
 shinyApp(ui, server)
