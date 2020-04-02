@@ -3,7 +3,7 @@ heatmapUI <- function(id) {
   
   tabPanel("Heat Map",
     sidebarPanel(
-      width = 2,
+      width = 4,
       actionButton(ns("update_heatmap"), "Update Heatmap"),
       p(),
       downloadButton(ns('heatmap_download'),"Download Heatmap"),

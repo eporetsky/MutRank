@@ -4,16 +4,10 @@ MRnetworkUI <- function(id) {
   tabPanel("Network",
     sidebarPanel(
       width = 4,
-      actionButton(ns("update_network"), "Update Network"),
-      checkboxInput(ns("mr_or_ed"), "Exponential decay instead of MR threshold:", value = F, width = NULL),
-      uiOutput(ns("threshold")),
+      numericInput(ns("threshold"), "Select MR Threshold:",10),
       checkboxInput(ns("star_bait"), "Change bait gene to star shape?", value = T, width = NULL),
-      checkboxInput(ns("draw_clusters"), "Find Clusters?", value = F, width = NULL),
-      checkboxInput(ns("quant_vertices"), "Set size of vertices?", value=T, width=NULL),
-      #checkboxInput(ns("size_or_color"), "FC by size or color?", value=T, width=NULL),
-      numericInput(ns("min_overlap"), "Minimum overlapping genes in cluster:", 1),
+      checkboxInput(ns("quant_vertices"), "Color vertices with foldchange data?", value=T, width=NULL),
       uiOutput(ns("foldchange_columns")),
-      uiOutput(ns("select_clusters")),
       hr(),
       uiOutput(ns("category_diamond")),
       uiOutput(ns("category_star")),
@@ -28,30 +22,17 @@ MRnetworkUI <- function(id) {
 }
 
 MRnetwork <- function(input, output, session, coexpression, annotations, 
-                      symbols, foldchange, association, categories, go_mapping, domain_mapping) {
+                      symbols, foldchange, categories, go_mapping, domain_mapping) {
   ns <- session$ns
 
   # This is the gene that will be colored red
   reference_gene <- reactive({row.names(coexpression())[1]})
   # To make a network a 
-  output$threshold <- renderUI({
-    if(input$mr_or_ed){selectInput(ns("threshold"), "Exponential decay threshold:", selected="all", choices = c(1,2,3,4,5))}
-    else{numericInput(ns("threshold"), "MR Threshold:",10)}
-  })
   
   raw_network <- reactive({
     # Use input coexpression table as an adjacency matrix
     adj_matrix <- as.matrix(coexpression())
-    if(input$mr_or_ed){
-      # transform data using Wisecavers exponential deccay parameters
-      adj_matrix <- apply(adj_matrix, 2, mr_exponential_decay)
-      # Filter out vertices with higher MR values than specified
-      adj_matrix[adj_matrix < 0.01] <- 0
-    }
-    else{
-      adj_matrix[adj_matrix > as.integer(input$threshold)] <- Inf
-      adj_matrix <- apply(adj_matrix, 2, mr_exponential_decay)
-    }
+    adj_matrix[adj_matrix > as.integer(input$threshold)] <- 0
     # Create the igraph network from the adjecency matrix
     igraph_network <- graph_from_adjacency_matrix(adj_matrix, mode="undirected", weighted = T,
                                                   diag = F, add.colnames = NA, add.rownames = NULL)
@@ -83,18 +64,8 @@ MRnetwork <- function(input, output, session, coexpression, annotations,
     return(shapes)
   })
   
-  # Apply ClusterONE to the network and change edge colors based on detected clusters
-  reactive_clusterONEs <- reactive({clusterONEs(raw_network())})
-  select_clusters <- reactive({append("all",1:length(reactive_clusterONEs()))})
-  output$select_clusters <- renderUI({selectInput(ns("select_clusters"), "Choose Cluster:", selected="all", select_clusters()) })
-  reactive_cluster_final <- reactive({
-    if(input$draw_clusters & !is.na(reactive_clusterONEs())){
-      final_clusters(raw_network(),reactive_clusterONEs(),input$select_clusters,input$min_overlap)
-    } else{return(list(c(list(E(raw_network())),"gray")))}
-  })
-  
   # Change the colors of vertices based on log2 fold-change data. Select column to use
-  foldchange_columns <- reactive({colnames(foldchange())[2:length(colnames(foldchange()))]})
+  foldchange_columns <- reactive({colnames(foldchange())[1:length(colnames(foldchange()))]})
   output$foldchange_columns <- renderUI({selectInput(ns("foldchange_column"), "Choose Foldchange Column:", 
                                                      selected=foldchange_columns()[1], foldchange_columns()) })
   reactive_foldchange <- reactive({
@@ -117,10 +88,6 @@ MRnetwork <- function(input, output, session, coexpression, annotations,
       vertex_color <- list(background="red",border="red")
       igraph_network <- set_vertex_attr(igraph_network,"shape",index=V(igraph_network)[1], value="star")#list(background="gray",border="red"))
     }
-    for(i in 1:(length(reactive_cluster_final()))){
-      igraph_network <- set_edge_attr(igraph_network,"color",reactive_cluster_final()[[i]][[1]],reactive_cluster_final()[[i]][[2]])
-      igraph_network <- set_edge_attr(igraph_network,"width",reactive_cluster_final()[[i]][[1]], value=5)
-    }
     new_symbols <- symbol_converter(symbols(), vertex_attr(igraph_network,'name'))
     igraph_network <- set_vertex_attr(igraph_network,"name",value=new_symbols)           # change vertex color based on fc
     return(igraph_network)
@@ -128,52 +95,13 @@ MRnetwork <- function(input, output, session, coexpression, annotations,
   
   # Convert the igraph network instance into a visNetwork
   network_plot <- reactive({
-    input$update_network
     data <- toVisNetworkData(final_network())
     visNetwork(nodes = data$nodes, edges = data$edges, randomSeed=1) %>% 
       visIgraphLayout() %>%
       #visEdges(smooth = FALSE) %>% 
       visEvents(selectNode = "function(properties) {alert(this.body.data.nodes._data[properties.nodes[0]].annotation); }")
   })
-  
   output$network_plot <- renderVisNetwork({network_plot()})
-
-  
-}
-
-mr_exponential_decay <- function(mr){exp(-(mr-1)/5)}
-
-union_overlapping_clusters <- function(clusters,min_overlap){
-  changes_were_made = TRUE
-  while(changes_were_made){
-    changes_were_made = FALSE
-    if(length(clusters)==1){break}
-    for(cmb in combn(1:length(clusters),2,simplify=F)){
-      if(length(intersect(clusters[[cmb[1]]], clusters[[cmb[2]]]))>=min_overlap){
-        union_cluster <- list(union(clusters[[cmb[1]]], clusters[[cmb[2]]]))
-        clusters <- clusters[-cmb]
-        clusters <- append(clusters, union_cluster)
-        changes_were_made = TRUE
-        break # Break cause list order just changed
-      }
-    }
-  }
-  return(clusters)
-}
-
-color_clusters <- function(clusters, vertices_names){
-    vertices_colors <- rep("", length(vertices_names))
-    # color pellete and color selection assuming non-overlapping clusters
-    qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-    col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-    for(i in 1:length(clusters)){
-      for(c in 1:length(vertices_names)){
-        if(vertices_names[c] %in% clusters[[i]]){
-          vertices_colors[c] <- col_vector[i]
-        }
-      }
-    }
-  return(vertices_colors)
 }
 
 check_for_pfams <- function(all_pfams, pfam_list, gene_list){
@@ -191,9 +119,10 @@ foldchange_vertices <- function(igraph_network, foldchange, column){
   vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
   # Set default fold-change values to 1 on all vertices
   fc <- rep(0, length(vertices_names))
-  gene_col <- colnames(foldchange[1])
+  #gene_col <- colnames(foldchange[1])
+  foldchange_genes <- rownames(foldchange)
   for(name in vertices_names){
-    if(name %in% foldchange[,gene_col]){fc[match(name,vertices_names)] <- foldchange[foldchange[,gene_col]==name,][,column]}}
+    if(name %in% foldchange_genes){fc[match(name,vertices_names)] <- foldchange[foldchange_genes==name,][,column]}}
   br <- rev(brewer.pal(n = 7, name = 'RdBu')) # brewer colors, reversed
   br[4] <- "gray"
   bn <- .bincode(fc,breaks=c(-Inf,-3,-2,-1,1,2,3,Inf)) # bins of values
@@ -211,46 +140,4 @@ category_shape <- function(vertices_names, shapes, categories, column, shape, go
   all_matched[!is.na(all_matched)] <- shape
   shapes[!is.na(all_matched)] <- all_matched[!is.na(all_matched)]
   return(shapes)
-}
-
-clusterONEs <- function(igraph_network){
-  # Get the name of all the vertices in the network
-  vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
-  # Set name of vertices to black, ended up not using now for the time being
-  #vertices_colors <- rep("black", length(vertices_names))
-  if(length(E(igraph_network))==0){return(NA)}
-  # Instead of writing the actual igraph network table to file, capture the output to variable
-  clusterONE_IO_edges <- capture.output(write.table(get.data.frame(igraph_network, what= c("edges")), row.names=FALSE,col.names=F,quote=F,sep="\t"))
-  # Run the ClusterONE algorithm on the edges tsv file that's captured as a variable and save to variable with intern=TRUE
-  clusterONE_IO_clusters <- system("java -jar cluster_one-1.0.jar /dev/stdin -F 'csv'", intern=TRUE, input=clusterONE_IO_edges)
-  # Read the ClusterONE output from a temporary file 
-  clusterONEs <- read.table(text=clusterONE_IO_clusters, header=T, sep=",")
-  # Filter the predicted clusters based on p-value<0.1, as used in Wisecave paper
-  clusters <- strsplit(as.vector(clusterONEs[clusterONEs[,"P.value"]<0.1,]$Members), " ")
-  # If significant clusters were detected, color them
-  return(clusters)}
-
-
-final_clusters <- function(igraph_network,clusters,selected_cluster,min_overlap){
-  vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
-  if(selected_cluster!="all"){
-    clusters <- clusters[as.integer(selected_cluster)]
-  }
-  if(length(clusters)>1){
-    # If more than one cluster was detected, check for overlapping nodes and combine them
-    clusters <- union_overlapping_clusters(clusters,min_overlap)
-    vertices_colors <- color_clusters(clusters, vertices_names)
-  } else{vertices_colors <- color_clusters(clusters, vertices_names)}
-  return_list <- list()
-  for(cluster in clusters){
-    # get all pair-wise combinations of vertices, unlist to fit next function
-    vertex_pairs <- unlist(combn(cluster,2,simplify=F))
-    # get all existing edges between pairs of vertices (equal zero=no edge)
-    existing_edges <- get.edge.ids(igraph_network, vertex_pairs)
-    # get the actual edges from the graph based on existing edge pairs
-    return_list <- append(return_list, list(c(
-      list(E(igraph_network, P=vertex_pairs[rep(existing_edges!=0,each=2)])),
-      list(vertices_colors[match(cluster[[1]], vertices_names)]))))
-  }
-  return(return_list)
 }

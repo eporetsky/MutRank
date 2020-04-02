@@ -1,5 +1,5 @@
 ######################################################
-## mutRank Version 0.8
+## mutRank Version 0.9
 ## Written by Elly Poretsky
 ## Alisa Huffaker Lab
 ## University of California, San Diego
@@ -9,32 +9,29 @@
 ## or mentioned below
 ######################################################
 
-## Load necessary packages
 
-#if (!require("phytools")) {
-#  install.packages("shiny", dependencies = TRUE)
-#  library(shiny)
-#}
+# https://vbaliga.github.io/verify-that-r-packages-are-installed-and-loaded/
+# Now load or install&load all
+package.check <- lapply(
+  c("shinyjs", "shiny","shinythemes", "igraph","visNetwork", "ggplot2",
+    "data.table", "RColorBrewer","reshape2", "ontologyIndex","hypergea"),
+  FUN = function(x) {
+    if (!require(x, character.only = TRUE)) {
+      install.packages(x, dependencies = TRUE)
+      library(x, character.only = TRUE)
+    }})
 
-library(shinyjs)
-library(shiny)
-library(shinythemes)
-library(igraph)
-library(visNetwork)
-library(ggplot2)
-library(RColorBrewer) # for network node colors
-library(reshape2) # used for the heatmap
-library(ontologyIndex)
-library(hypergea)
 
+source("global.R")
 source("data_input.R")
 source("module_mutualrank.R")
 source("module_network.R")
 source("module_heatmap.R")
 source("module_enrichment.R")
+source("mutrank_functions.R")
 
 ui <- fluidPage(
-  navbarPage("mutRank v0.8",
+  navbarPage("mutRank v0.9",
     theme = shinytheme("flatly"),
     dataInputUI("dataInputNS"),
     mutualRankUI("mutualRankNS"),
@@ -47,12 +44,14 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   session$onSessionEnded(stopApp)
+  #reactive({print(session$clientData$url_pathname())})
   data <- callModule(dataInput,"dataInputNS")
   coexpression <- callModule(mutualRank,"mutualRankNS", 
                              data$expression,
                              data$annotations,
                              data$symbols,
                              data$categories,
+                             data$foldchange,
                              data$GO_genes,
                              data$domains)
   callModule(heatmap,"heatmapNS",
@@ -63,7 +62,6 @@ server <- function(input, output, session) {
              data$annotations, 
              data$symbols, 
              data$foldchange, 
-             data$association,
              data$categories,
              data$GO_genes,
              data$domains)
