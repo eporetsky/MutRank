@@ -1,6 +1,5 @@
 dataInputUI <- function(id) {
   ns <- NS(id)
-  useShinyjs()
   tabPanel("Data Input",
     tags$head(tags$style(HTML("hr {border-top: 1px solid #95a5a6; margin-bottom:0px; margin-top:0px}
                                .form-group {margin-bottom: 2px; margin-top: 2px;}"))),

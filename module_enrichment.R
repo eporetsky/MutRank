@@ -1,6 +1,5 @@
 enrichmentUI <- function(id) {
   ns <- NS(id)
-  useShinyjs()
   tabPanel("Enrichment",
     tags$head(tags$style(HTML("hr {border-top: 1px solid #000000;}"))),
     sidebarPanel(width = 4,
@@ -130,4 +129,4 @@ GO_enrichment <- function(gene_set, GO_db, GO_genes, fdr_method,
   }
   return(p.df[order(p.df[fdr_name]),])
 }
-
+?p.adjust

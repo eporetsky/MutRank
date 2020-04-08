@@ -14,6 +14,7 @@ mutualRankUI <- function(id){
        actionButton(ns("update_button"), "Calculate MR Values"),
        p(), hr(),
        checkboxInput(ns("firstColumn"), "Only show first column?", value = T, width = NULL),
+       checkboxInput(ns("order_coexpression"), "Order by MR?", value = T, width = NULL),
        checkboxInput(ns("round"), "Round to nearest integer", value = T, width = NULL),
        checkboxInput(ns("annotate"), "Add gene annotations", value = T, width = NULL),
        checkboxInput(ns("symbols"), "Add gene symbols", value = T, width = NULL),
@@ -51,12 +52,12 @@ mutualRank <- function(input, output, session, expression, annotations, symbols,
   output$reference_method <- renderUI({
     if(input$reference_gene_method=="Single reference gene"){
       list(textInput(ns('reference_gene'), "Reference gene ID:","GRMZM2G085381"),# Bx1 for reference
-      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 10))
+      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 200))
     } else{
     if(input$reference_gene_method=="Compound reference gene"){
       list(selectInput(ns("compound_method"), "Choose compounding method:", choices=c("Sum","Average","Max","Min"), selected="Sum"),
       textInput(ns('reference_gene'), "Reference gene IDs to compound:","GRMZM2G085381\tGRMZM2G085054"),
-      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 10)) # Bx1 for reference
+      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 200)) # Bx1 for reference
     } else{
     if(input$reference_gene_method=="Reference gene list"){
       textInput(ns('reference_gene'), "List of reference genes:","GRMZM2G085381\tGRMZM2G085054") # Bx1 and Bx8 for reference
@@ -64,7 +65,9 @@ mutualRank <- function(input, output, session, expression, annotations, symbols,
   })
 
   coexpression_df_prefs <- reactive({
-    df_output_editor(coexpression(),input$firstColumn,input$round)
+    coexpression <- coexpression()
+    if(input$order_coexpression){coexpression <- order_coexpression_table(coexpression)}
+    df_output_editor(coexpression,input$firstColumn,input$round)
   })
   
   coexpression_df_prefs_annotations <- reactive({

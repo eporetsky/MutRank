@@ -69,7 +69,7 @@ MRnetwork <- function(input, output, session, coexpression, annotations,
   output$foldchange_columns <- renderUI({selectInput(ns("foldchange_column"), "Choose Foldchange Column:", 
                                                      selected=foldchange_columns()[1], foldchange_columns()) })
   reactive_foldchange <- reactive({
-    if(input$quant_vertices){return(foldchange_vertices(raw_network(), foldchange, input$foldchange_column))}  
+    if(input$quant_vertices){return(foldchange_vertices(raw_network(), foldchange(), input$foldchange_column))}  
     else{return("gray")}
   })
   
@@ -114,12 +114,11 @@ check_for_pfams <- function(all_pfams, pfam_list, gene_list){
 }
 
 foldchange_vertices <- function(igraph_network, foldchange, column){
-  foldchange <- foldchange()
+  foldchange[,"NULL"]<-NA # work-around because it returns "incorrect number of dimensions" if single column
   # Get the name of all the vertices in the network
   vertices_names <- get.data.frame(igraph_network, what= c("vertices"))[,1]
   # Set default fold-change values to 1 on all vertices
   fc <- rep(0, length(vertices_names))
-  #gene_col <- colnames(foldchange[1])
   foldchange_genes <- rownames(foldchange)
   for(name in vertices_names){
     if(name %in% foldchange_genes){fc[match(name,vertices_names)] <- foldchange[foldchange_genes==name,][,column]}}

@@ -1,5 +1,5 @@
 ######################################################
-## mutRank Version 0.9
+## MutRank Version 0.9
 ## Written by Elly Poretsky
 ## Alisa Huffaker Lab
 ## University of California, San Diego
@@ -9,11 +9,16 @@
 ## or mentioned below
 ######################################################
 
+#install.packages("rmarkdown")
+#install.packages("pdflatex")
+#install.packages("rmarkdown")
+#rmarkdown::render("README.md", "pdf_document")
 
 # https://vbaliga.github.io/verify-that-r-packages-are-installed-and-loaded/
 # Now load or install&load all
+
 package.check <- lapply(
-  c("shinyjs", "shiny","shinythemes", "igraph","visNetwork", "ggplot2",
+  c("shiny","shinythemes", "igraph","visNetwork", "ggplot2",
     "data.table", "RColorBrewer","reshape2", "ontologyIndex","hypergea"),
   FUN = function(x) {
     if (!require(x, character.only = TRUE)) {
@@ -31,15 +36,17 @@ source("module_enrichment.R")
 source("mutrank_functions.R")
 
 ui <- fluidPage(
-  navbarPage("mutRank v0.9",
+  
+  navbarPage("MutRank v0.10",
     theme = shinytheme("flatly"),
     dataInputUI("dataInputNS"),
     mutualRankUI("mutualRankNS"),
     heatmapUI("heatmapNS"),
     MRnetworkUI("MRnetworkNS"),
     enrichmentUI("enrichmentNS")
-    
-  )
+  ),
+  tags$head(tags$style('body {color:black; font-size: 175%;}')),
+  tags$head(tags$style(HTML('.shiny-bound-input {color:black; font-size: 100%;}')))
 )
 
 server <- function(input, output, session) {

@@ -33,8 +33,20 @@ coexpression_table <- function(datm, reference_gene, reference_method, num_top_p
   rank_for_mr <- rank_for_mr[row.names(genes_for_mr),] # Remove all the rows except for the selected genes
   mr <- sqrt(rank_for_mr*t(rank_for_mr)) # Calculate the MR values between selected genes
   mr <- as.data.frame(mr)  # column reordering doesn't work on matrix
+  return(mr)
+}
+
+order_coexpression_table <- function(mr){
   mr <- mr[order(mr[,1]),] # order rows from lowest MR values
-  mr <- mr[rownames(mr)]   # reorder column with rowname order
+  mr <- mr[rownames(mr)]   # reorder column with rowname orde
+  return(mr)
+}
+
+symbol_converter <- function(symbols,gene_names){
+  symbols <- as.vector(symbols[,1][match(tolower(gene_names), tolower(rownames(symbols)))])
+  no_symbols <- attr(na.omit(symbols),"na.action")
+  symbols[no_symbols] <- gene_names[no_symbols]
+  return(symbols)
 }
 
 # Add an annotation column to the MR table
@@ -49,8 +61,9 @@ df_add_symbols <- function(df, symbols){
 }
 
 df_add_foldchange <- function(df, foldchange){
-  foldchange <- foldchange[match(tolower(rownames(df)), tolower(rownames(foldchange))),]
-  return(cbind(df,foldchange))
+  # if foldchange contains a single column the cbind changes its name to the variable name...
+  FC <- foldchange[match(tolower(rownames(df)), tolower(rownames(foldchange))),]
+  return(cbind(df,FC))
 }
 
 # Add a column for each category in the MR table
