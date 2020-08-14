@@ -8,13 +8,12 @@ mutualRankUI <- function(id){
        selectInput(ns("reference_gene_method"), "Select reference gene method:", selectize=F, width="100%",
                    choices = c("Single reference gene", "Compound reference gene", "Reference gene list"),
                    selected="Single reference gene"),
-       p(), hr(), p(),
-       uiOutput(ns("reference_method")),
        p(),
-       actionButton(ns("update_button"), "Calculate MR Values"),
+       uiOutput(ns("reference_method")),p(),
+       actionButton(ns("update_button"), "Calculate MR Values"),p(),
+       textOutput(ns("missing_genes")),
        p(), hr(),
        checkboxInput(ns("firstColumn"), "Only show first column?", value = T, width = NULL),
-       checkboxInput(ns("order_coexpression"), "Order by MR?", value = T, width = NULL),
        checkboxInput(ns("round"), "Round to nearest integer", value = T, width = NULL),
        checkboxInput(ns("annotate"), "Add gene annotations", value = T, width = NULL),
        checkboxInput(ns("symbols"), "Add gene symbols", value = T, width = NULL),
@@ -35,15 +34,28 @@ mutualRankUI <- function(id){
     )
 }
 
-mutualRank <- function(input, output, session, expression, annotations, symbols, 
-                       categories, foldchange, go_mapping, domain_mapping){
+mutualRank <- function(input, output, session, 
+                       expression, annotations, symbols, categories, foldchange, go_mapping, domain_mapping){
   
   ns <- session$ns
   
+  
+  ref_genes <- reactive({
+    input$update_button
+    # Tries to convert the input gene(s) to a vector of gene_list and remove duplicates
+    gene_list <- isolate(unique(unlist(strsplit(input$reference_gene, "[[:space:],]+"))))
+    # If the selected method is a single reference gene it returns the first gene even if given a gene list
+    ifelse(input$reference_gene_method=="Single reference gene",return(gene_list[1]),return(gene_list))
+  })
+  reference_genes <- reactive({ref_genes()[ref_genes() %in% row.names(expression())]}) # Returns the genes present in the expression data
+  missing_genes <- reactive({ref_genes()[!ref_genes() %in% row.names(expression())]})  # Returns the genes not present in the expression data
+    
+  # The main reactive function to calculate to Mutual Rank table
   coexpression <- reactive({
     input$update_button
     coexpression_table(expression(), 
-                       isolate(input$reference_gene),
+                       # Values below are isolated so it is only reactive to input$update_button 
+                       isolate(reference_genes()),
                        isolate(input$reference_gene_method),
                        isolate(input$num_top_pcc),
                        isolate(input$compound_method))
@@ -56,8 +68,8 @@ mutualRank <- function(input, output, session, expression, annotations, symbols,
     } else{
     if(input$reference_gene_method=="Compound reference gene"){
       list(selectInput(ns("compound_method"), "Choose compounding method:", choices=c("Sum","Average","Max","Min"), selected="Sum"),
-      textInput(ns('reference_gene'), "Reference gene IDs to compound:","GRMZM2G085381\tGRMZM2G085054"),
-      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 200)) # Bx1 for reference
+      textInput(ns('reference_gene'), "Reference gene IDs to compound:","GRMZM2G085381\tGRMZM2G085054"), # Bx1 and Bx8 for reference
+      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 200))
     } else{
     if(input$reference_gene_method=="Reference gene list"){
       textInput(ns('reference_gene'), "List of reference genes:","GRMZM2G085381\tGRMZM2G085054") # Bx1 and Bx8 for reference
@@ -65,20 +77,16 @@ mutualRank <- function(input, output, session, expression, annotations, symbols,
   })
 
   coexpression_df_prefs <- reactive({
-    coexpression <- coexpression()
-    if(input$order_coexpression){coexpression <- order_coexpression_table(coexpression)}
-    df_output_editor(coexpression,input$firstColumn,input$round)
+    # Calls the Mutual Rank coexpression reative table to filter all columns except first and/or round MR values
+    df_output_editor(coexpression(),input$firstColumn,input$round)
   })
   
   coexpression_df_prefs_annotations <- reactive({
     output_df <- coexpression_df_prefs()
-    if(input$symbols){output_df <- df_add_symbols(output_df,symbols())}
+    if(input$symbols)   {output_df <- df_add_symbols(output_df,symbols())}
     if(input$categories){output_df <- df_add_categories(output_df, categories(),go_mapping(),domain_mapping())}
     if(input$foldchange){output_df <- df_add_foldchange(output_df,foldchange())}
-    if(input$annotate){output_df <- df_annotator(output_df,annotations())}
-    
-    
-    #output_df <- output_df[, !apply(is.na(output_df), 2, all),drop=FALSE] # remove empty columns
+    if(input$annotate)  {output_df <- df_annotator(output_df,annotations())}
     return(output_df)
   })
   
@@ -89,6 +97,9 @@ mutualRank <- function(input, output, session, expression, annotations, symbols,
     rownames = TRUE
   )
   
+  # Prints the list of genes not found in the expression table
+  output$missing_genes <- renderText(paste("Genes not found: ", toString(missing_genes()))) 
+
   output$download_table <- downloadHandler(
     filename = function(){"mutRank_table.tsv"}, 
     content = function(fname){write.table(coexpression_df_prefs_annotations(), fname, sep="\t", quote=F, col.names=NA)}

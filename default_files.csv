@@ -1,9 +1,10 @@
 ,file_name
 annotations,example_annotations.tsv
 categories,example_categories.tsv
-data,example_expression.csv
+daata,example_expression.csv
 domains,example_pfams.tsv
 foldchange,examaple_slb.csv
 GO_db,goslim_plant.obo
 GO_genes,example_GO.tsv
-symbols,example_kauralexin_symbols.tsv
+symbols,example_symbols.tsv
+data,example_expression.csv
