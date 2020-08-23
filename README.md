@@ -76,6 +76,8 @@ information includes gene annotations (Fig. 1B), gene symbols (Fig. 1C), differe
 protein Pfam domain annotation (Fig. 1F) and the Gene Ontology (GO) database file along the GO assignments (Fig. 1G). By default MutRank 
 starts with loading the example files but this can be changed by pressing the "Remember Selected Files" button.
 
+![screenshot_datainput](img/screenshot_datainput.png)
+
 ## `Mutual Rank` Tab
 
 Once the expression data and supporting information are loaded the MR-based coexpression analyses can start (Fig. 2). First, the user should select 
@@ -91,6 +93,8 @@ presented in the MR-based coexpression table in the main panel (Fig. 2E) which c
 
 In the example below (Fig. 2) we selected the maize reference gene GRMZM2G085381 (Bx1).
 
+![screenshot_mutualrank](img/screenshot_mutualrank.png)
+
 ## `Heatmap` Tab
 
 The MR-based coexpression table generated in the Mutual Rank tab can be used to generate a heatmap graphical output in the Heat Map tab (Fig. 3).
@@ -99,6 +103,8 @@ to modify the heatmap figure, including the number of genes to included in the h
 the heatmap (Fig. 3B), the text size (Fig. 3C) and an option to convert gene IDs to gene symbols, when applicable (Fig. 3D). The red-to-white color 
 gradient is used to represent the MR values and is set to represent MR values between 1 and 100 with all values higher than 100 set to a white color.
 The heatmap presented in the main panel (Fig. 3E) can be downloaded as a PNG file using the 'Download Heatmap' button (Fig. 3F).
+
+![screenshot_heatmap](img/screenshot_heatmap.png)
 
 ## `Network` Tab
 
@@ -115,6 +121,8 @@ using the vizNetwork package (Fig. 4H). Gene annotations can accessed by pressin
 Differential expression data is visualized as an incremental gradient between log2 fold-change of -3 and 3. The gradient scale (Fig. 4J) was added manually
 and is available as a separate image in the "img" folder under the "DEG_gradient.png" file name. 
 
+![screenshot_network](img/screenshot_network.png)
+
 ## `Enrichment` Tab
 
 The MR-based coexpression table generated in the Mutual Rank tab can be tested for Gene Ontology (GO) enrichment. We use the hypergeometric test
@@ -126,3 +134,5 @@ term; "n" - Number of included genes from the coexpression table; "m" - Number o
 the specific GO term. Users can also select which method (holm, hochberg, hommel, bonferroni, BH or BY) to use to adjust the P-value for false-discvery 
 rate (FDR) (Fig. 5C). The GO enrichment table presented in the main panel (Fig. 5D) can be downloaded as a PNG file using the 'Download Table' 
 button (Fig. 3E).
+
+![screenshot_enrichment](img/screenshot_enrichment.png)
