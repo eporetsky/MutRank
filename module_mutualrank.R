@@ -53,23 +53,27 @@ mutualRank <- function(input, output, session,
   # The main reactive function to calculate to Mutual Rank table
   coexpression <- reactive({
     input$update_button
+    # Set the maximum number of of top PCC coexpressed genes to 500
+    num_top_pcc <- input$num_top_pcc
+    if(num_top_pcc>500){num_top_pcc<-500}
+    # Calculatue the MR coexpression table using the input parameters
     coexpression_table(expression(), 
                        # Values below are isolated so it is only reactive to input$update_button 
                        isolate(reference_genes()),
                        isolate(input$reference_gene_method),
-                       isolate(input$num_top_pcc),
+                       isolate(num_top_pcc),
                        isolate(input$compound_method))
   })
   
   output$reference_method <- renderUI({
     if(input$reference_gene_method=="Single reference gene"){
       list(textInput(ns('reference_gene'), "Reference gene ID:","GRMZM2G085381"),# Bx1 for reference
-      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 200))
+      numericInput(ns("num_top_pcc"), "Number of genes for coexpression (Max 500):", 200))
     } else{
     if(input$reference_gene_method=="Compound reference gene"){
       list(selectInput(ns("compound_method"), "Choose compounding method:", choices=c("Sum","Average","Max","Min"), selected="Sum"),
       textInput(ns('reference_gene'), "Reference gene IDs to compound:","GRMZM2G085381\tGRMZM2G085054"), # Bx1 and Bx8 for reference
-      numericInput(ns("num_top_pcc"), "Number of genes for coexpression:", 200))
+      numericInput(ns("num_top_pcc"), "Number of genes for coexpression (Max 500):", 200))
     } else{
     if(input$reference_gene_method=="Reference gene list"){
       textInput(ns('reference_gene'), "List of reference genes:","GRMZM2G085381\tGRMZM2G085054") # Bx1 and Bx8 for reference

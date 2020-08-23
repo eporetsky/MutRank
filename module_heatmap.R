@@ -3,8 +3,8 @@ heatmapUI <- function(id) {
   tabPanel("Heatmap",
     sidebarPanel(
       width = 4,
-      numericInput(ns("n_rows"), "Number of rows to include:",25),
-      numericInput(ns("text_threshold"), "Text MR threshold:",10),
+      numericInput(ns("n_rows"), "Number of rows to include (max 25):",25),
+      numericInput(ns("text_threshold"), "Text MR threshold (max: 100)",10),
       numericInput(ns("text_size"), "Text font size:",10,step=1),
       checkboxInput(ns("convert_symbols"), "Convert gene names to symbols", value = T, width = NULL),
       p(),
@@ -28,9 +28,11 @@ heatmap <- function(input, output, session,
   
   # Shiny reactive function to reduce the amount of rows in the heatmap based on user specification
   final_cormat <- reactive({
+    n_rows <- input$n_rows
     coexpression <- coexpression()
-    if(input$n_rows<length(rownames(coexpression))){
-      coexpression <- coexpression[1:input$n_rows,1:input$n_rows]}
+    if(n_rows>25){n_rows<-25}
+    if(n_rows<length(rownames(coexpression))){
+      coexpression <- coexpression[1:n_rows,1:n_rows]}
     return(coexpression)
   })
   

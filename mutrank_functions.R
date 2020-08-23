@@ -90,12 +90,15 @@ wide2long <- function(df){
 # The main function for drawing the Mutual Rank heatmap using ggplot
 draw_heatmap <- function(melted_cormat, text_threshold, text_size){
   num <- length(rownames(melted_cormat))
-  # Change all values higher than 100 to 100 so they appear white instead of grey
+  # Check if there is atleast one value>100, otherwise function would return an error
+  # Change all values higher than 100 to 101 so they appear white instead of grey
   if(sum(melted_cormat$value>100)>0){melted_cormat[melted_cormat$value>100,]$value=100}
+  # If text_threshold is larger than 100 change it to 100 so larger values don't show
+  if(text_threshold>100){text_threshold<-100}
   # Create the heatmap using ggplot
   ggplot(data = melted_cormat, aes(Var1,Var2,fill=value))+
     geom_tile(color = "black",size=1,aes(fill = value))+
-    geom_text(data=subset(melted_cormat,(melted_cormat$value>0 & melted_cormat$value<=text_threshold)),
+    geom_text(data=subset(melted_cormat,(melted_cormat$value>0 & melted_cormat$value<text_threshold)),
               aes(label=floor(value)), size=log(text_size**2), fontface="bold", colour="black")+
     scale_fill_gradient2(low = "red", high = "white",# mid = "white", 
                          limit=c(0,100), space = "Lab", midpoint = 95, 
