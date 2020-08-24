@@ -60,37 +60,45 @@ dataInput <- function(input, output, session) {
   ### Support for proper file format testing is not implemented - Follow example file format ###
   expression <- reactiveVal()
   observe({if(input$expression_list==""){return(data.frame())}
+    print("Loading expression data")
     data <- data_loader(read.csv(paste("data/", input$expression_list, sep=""), header=T))    # Load the expression data from CSV file
     output$expression_name <- renderText(paste("Selected table size: ", toString(dim(data)))) # Print the expression data dimensions
     expression(data[rowSums(data[, -1])>0, ])})                                               # Removes row with 0 sum and save into reactiveVal
   
   annotations <- reactiveVal()
   observe({if(input$annotation_list==""){return(annotations(data.frame(annotation=c(NA))))}
+    print("Loading annotation data")
     annotations(read.table(paste("annotations/", input$annotation_list, sep=""), sep="\t", header=T, row.names=1, quote=""))})
   
   symbols <- reactiveVal()
   observe({if(input$symbol_list==""){return(symbols(data.frame(symbol=c(NA))))}
+    print("Loading symbols")
     symbols(read.table(paste("symbols/", input$symbol_list, sep=""), sep="\t", header=T, row.names=1, quote=""))})
   
   foldchange <- reactiveVal()
   observe({if(input$foldchange==""){foldchange(data.frame(FC=c(1),row.names=c("a")))} else{
+    print("Loading foldchange data")
     foldchange(read.table(paste("foldchange/", input$foldchange, sep=""), row.names=1, header=T,sep=","))}})
   
   GO_db <- reactiveVal()
   observe({if(input$GO_db==""){return(GO_db(data.frame(onthology=c(NA))))}
+    print("Loading GO database")
     onthology <- get_ontology(paste("GO/", input$GO_db,sep=""))$name
     GO_db(as.data.frame(onthology))})
   
   GO_genes <- reactiveVal()
   observe({if(input$GO_genes==""){return(GO_genes(data.frame(genes=c(NA),term_accession=c(NA))))}
+    print("Loading GO assignment data")
     GO_genes(wide2long(read.table(paste("GO/",input$GO_genes,sep=""),header=T, sep="\t")))})
   
   domains <- reactiveVal()
   observe({if(input$domain_list==""){return(domains(data.frame(genes=c(NA),domains=c(NA))))}
+    print("Loading Pfam domain data")
     domains(wide2long(read.table(paste("domains/",input$domain_list,sep=""),header=T, sep="\t")))})
   
   categories <- reactiveVal()
   observe({if(input$category_list==""){return(categories(data.frame(symbol=c(NA))))}
+    print("Loading categories")
     categories(read.table(paste("categories/", input$category_list, sep=""), sep="\t", row.names=NULL, header=T, quote=""))})
   
   return(list(expression=expression,
