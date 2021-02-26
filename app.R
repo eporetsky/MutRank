@@ -10,11 +10,17 @@ citation("ggplot2")
 ## More information at: https://github.com/eporetsky/MutRank
 ######################################################
 
+# hyptergea was remove from CRAN: https://cran.r-project.org/web/packages/hypergea/index.html
+# MutRank now includes the archived version (hypergea 1.3.6) that will install from the directory
+if (!require("hypergea", character.only = TRUE)) {
+  install.packages(paste(dirname(rstudioapi::getActiveDocumentContext()$path),"/hypergea_1.3.6.tar.gz", sep="", collapse=NULL), repos = NULL)
+  library("hypergea", character.only = TRUE)}
+
 # Install packages that are not yet installed and loads them
 # Based on - https://vbaliga.github.io/verify-that-r-packages-are-installed-and-loaded/
 package.check <- lapply(
   c("shiny","shinythemes", "igraph","reshape2","visNetwork", "ggplot2",
-    "data.table", "RColorBrewer", "ontologyIndex","hypergea"),
+    "data.table", "RColorBrewer", "ontologyIndex"),
   FUN = function(x) {
     if (!require(x, character.only = TRUE)) {
       install.packages(x, dependencies = TRUE)
