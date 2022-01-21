@@ -1,7 +1,7 @@
 citation("ggplot2")
 
 ######################################################
-## MutRank Version 1.0
+## MutRank Version 1.1
 ## Written by Elly Poretsky
 ## Alisa Huffaker Lab
 ## University of California, San Diego
@@ -39,7 +39,7 @@ source("mutrank_functions.R")  # R script file that contains the functions used 
 
 # Shiny UI function
 ui <- fluidPage(
-  navbarPage("MutRank v1.0",
+  navbarPage("MutRank v1.1",
     theme = shinytheme("flatly"),
     dataInputUI("dataInputNS"),
     mutualRankUI("mutualRankNS"),

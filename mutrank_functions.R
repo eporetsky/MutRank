@@ -1,6 +1,11 @@
+if("test"=="te"){print("Test")}
 # Returns a Mutual Rank table based on user specified parameters
-coexpression_table <- function(datm, gene_list, reference_method, num_top_pcc, compound_method=NA){
+coexpression_table <- function(datm, gene_list, reference_method, num_top_pcc, compound_method=NA, order_ref_list){
   datm <- as.data.frame(datm)
+  
+  # keep order_ref_list TRUE unless user is using a list of reference genes
+  if(is.null(order_ref_list)){order_ref_list<-T}
+  if(reference_method!="Reference gene list"){order_ref_list<-T}
   
   # Handles the Compound reference gene option according to selected method
   if(reference_method=="Compound reference gene"){
@@ -27,8 +32,8 @@ coexpression_table <- function(datm, gene_list, reference_method, num_top_pcc, c
   rank_for_mr <- rank_for_mr[row.names(genes_for_mr),]  # Remove all rows except for the genes_for_mr vector
   mr <- sqrt(rank_for_mr*t(rank_for_mr))                # Calculate all Mutual Rank values between selected genes
   mr <- as.data.frame(mr)                               # Column reordering doesn't work on matrix so convert to data.frame
-  mr <- mr[order(mr[,1]),]                              # Order rows from lowest MR values to highest based on first column
-  mr <- mr[, row.names(mr)]                             # Reorder columns using the order of row names for symetrical table
+  if(order_ref_list){mr<-mr[order(mr[,1]),]}            # Order rows from lowest MR values to highest based on first column
+  mr <- mr[, row.names(mr)]                             # Reorder columns using the order of row names for symmetrical table
   return(mr)
 }
 
@@ -76,7 +81,7 @@ df_add_categories <- function(df, categories, go_mapping, domain_mapping){
 # Edit the MR table output based on Shiny inputs
 df_output_editor <- function(df,firstColumn,round){
   if(firstColumn){df<-df[,1, drop=FALSE]}  # Filter all columns except the first one
-  if(round){df<-floor(df)}                 # Round to lower integer using floor
+  if(round){df<-round(df, digits=0)}                 # Round to lower integer using floor
   return(df)
 }
 

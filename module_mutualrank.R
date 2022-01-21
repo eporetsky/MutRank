@@ -62,7 +62,8 @@ mutualRank <- function(input, output, session,
                        isolate(reference_genes()),
                        isolate(input$reference_gene_method),
                        isolate(num_top_pcc),
-                       isolate(input$compound_method))
+                       isolate(input$compound_method),
+                       isolate(input$order_ref_list))
   })
   
   output$reference_method <- renderUI({
@@ -76,12 +77,13 @@ mutualRank <- function(input, output, session,
       numericInput(ns("num_top_pcc"), "Number of genes for coexpression (Max 500):", 200))
     } else{
     if(input$reference_gene_method=="Reference gene list"){
-      textInput(ns('reference_gene'), "List of reference genes:","GRMZM2G085381\tGRMZM2G085054") # Bx1 and Bx8 for reference
+      list(textInput(ns('reference_gene'), "List of reference genes:","GRMZM2G085381\tGRMZM2G085054"), # Bx1 and Bx8 for reference
+      checkboxInput(ns("order_ref_list"), "Sort reference genes by MR values", value = F, width= NULL))
     }}}
   })
 
   coexpression_df_prefs <- reactive({
-    # Calls the Mutual Rank coexpression reative table to filter all columns except first and/or round MR values
+    # Calls the Mutual Rank coexpression reactive table to filter all columns except first and/or round MR values
     df_output_editor(coexpression(),input$firstColumn,input$round)
   })
   
