@@ -1,5 +1,10 @@
 # MutRank 
 
+# Note
+Due to potential dependency issues with Hypergea I have included a minimal version of MutRank (MutRank-1.1-minimal.zip)
+that includes only the data input and mutual rank analysis tabs. I will replace the Hypergea hypergeometric test method
+with a different one to avoid this issue in the future.
+
 # Introduction
 Transcriptomic data can uncover complex biological processes in part through the improved understanding of gene 
 coexpression patterns. Mutual Rank (MR), the geometric mean of the ranked Pearson’s Correlation Coefficient (PCCs) 

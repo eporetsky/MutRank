@@ -1,5 +1,3 @@
-citation("ggplot2")
-
 ######################################################
 ## MutRank Version 1.1
 ## Written by Elly Poretsky
