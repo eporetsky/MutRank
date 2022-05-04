@@ -94,10 +94,13 @@ GO_enrichment <- function(gene_set, GO_db, GO_genes, fdr_method,
     n.list <- append(n.list,num_genes_go)                   # Add n to the list for each GO term
     m.list <- append(m.list,num_genes_go_set)               # Add m to the list for each GO term
     
-    dmn <- list(set=c('y', 'n'), total=c('y', 'n'))         # A list to specifiy the matrix dimnames needed for the hypergeom.test
-    CT <- matrix(c(num_genes_go_set,num_set,num_genes_go,   # The matrix as specified for the hypergeom.test
-                   num_genes), nrow=2, dimnames=dmn)
-    p.val <- hypergeom.test(CT)$p.value                     # Get the p.value after performing the hypergeom.test
+    #dmn <- list(set=c('y', 'n'), total=c('y', 'n'))         # A list to specifiy the matrix dimnames needed for the hypergeom.test
+    #CT <- matrix(c(num_genes_go_set,num_set,num_genes_go,   # The matrix as specified for the hypergeom.test
+    #               num_genes), nrow=2, dimnames=dmn)
+    
+    
+    p.val <- dhyper(num_genes_go_set,num_set,
+                    num_genes,num_genes_go)                 # Get the p.value after performing the hypergeom.test
     p.list <- append(p.list,p.val)                          # Add the p.value to the p.list
     t.list <- append(t.list, as.vector(GO_db[GO,]))         # Add the GO term description to the list 
     fc_enrichment <- (num_genes_go_set/num_set) /           # Calculate the GO term fold-change for the gene-set
